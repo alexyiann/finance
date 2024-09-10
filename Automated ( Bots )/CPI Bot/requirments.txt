@@ -1,2 +1,2 @@
 ccxt==3.0.82
-selenium==4.9.0
+websocket_client==1.5.1
