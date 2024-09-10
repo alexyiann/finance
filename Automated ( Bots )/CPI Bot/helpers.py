@@ -1,19 +1,7 @@
 import ccxt
 import time
 from pprint import pprint
-from selenium import webdriver
 from secrets import BINANCE_API_KEY, BINANCE_SECRET_KEY
-
-
-def get_webdriver_instance(headless):
-    options = webdriver.ChromeOptions()
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    if headless:
-        options.add_argument('headless')
-    driver = webdriver.Chrome(options=options)
-    driver.implicitly_wait(50)
-
-    return driver
 
 
 def initialise_exchange_object():
