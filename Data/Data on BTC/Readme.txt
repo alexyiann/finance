@@ -1,3 +1,4 @@
+Suggest to run the code in a notebook
 Price data on BTC-USD
 Regression line on BTC-USD
 Equilibrium Price and Prediction
