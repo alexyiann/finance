@@ -8,3 +8,4 @@ pip install yfinance backtrader
 from datetime import datetime
 pip install matplotlib
 
+- Main strategy template python file , is just a simple strategy with the use of simple moving average for buy and sell signals 
