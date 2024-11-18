@@ -1,0 +1,121 @@
+import re
+import websocket
+import requests
+import json
+from solana.rpc.api import Client
+
+# Solana Client setup
+solana_client = Client("https://api.mainnet-beta.solana.com")
+
+# Trojan bot API URL and key
+TROJAN_API_URL = 'https://api.trojanbot.com/buy'
+TROJAN_API_KEY = 'your_trojan_api_key'
+
+# WebSocket API URL
+WS_URL = "wss://news.treeofalpha.com/ws"
+API_KEY = "your_api_key"
+
+# Store previously purchased contract addresses
+purchased_contracts = set()
+
+# Define the function to extract contract addresses from the message that end with 'pump'
+def extract_contract_address(message):
+    # Assuming Solana contract addresses are 32/44 character base58 strings and end with 'pump'
+    pattern = r"[1-9A-HJ-NP-Za-km-z]{32,44}pump$"  # Look for contract addresses ending with 'pump'
+    matches = re.findall(pattern, message)
+    return matches
+
+# Define a function to execute a buy on Solana using Trojan bot with configurations
+def buy_contract_with_trojan(contract_address):
+    headers = {'Authorization': f'Bearer {TROJAN_API_KEY}'}
+    
+    # Adding the buy configurations
+    payload = {
+        "contract_address": contract_address,
+        "quantity": 1,  # Adjust this as needed
+        "slippage_buy": 10,  # Slippage buy: 10%
+        "slippage_sell": 15,  # Slippage sell: 15%
+        "priority_fee": 0.0025,  # Priority fee: 0.0025 SOL
+        "jito_mev": True,  # Jito MEV: On
+    }
+    
+    response = requests.post(TROJAN_API_URL, headers=headers, json=payload)
+    
+    if response.status_code == 200:
+        print(f"Successfully bought contract {contract_address}")
+        return True
+    else:
+        print(f"Failed to buy contract {contract_address}: {response.text}")
+        return False
+
+# WebSocket message handler
+def on_message(ws, message):
+    print(f"Received message: {message}")
+    
+    # Filter only messages from @Xuser on X
+    if '"user": "@Xuser"' not in message:
+        print("Message is not from @ecca. Skipping...")
+        return
+
+    # Extract contract addresses from the message that end with 'pump'
+    contract_addresses = extract_contract_address(message)
+    
+    if contract_addresses:
+        for contract_address in contract_addresses:
+            # Check if the contract has already been purchased
+            if contract_address in purchased_contracts:
+                print(f"Contract {contract_address} already purchased. Skipping...")
+                continue
+            
+            print(f"Found new contract address: {contract_address}")
+            
+            # Execute buy through Trojan bot
+            success = buy_contract_with_trojan(contract_address)
+            
+            if success:
+                # Add the contract address to the set of purchased contracts
+                purchased_contracts.add(contract_address)
+                print(f"Bought contract {contract_address}")
+            else:
+                print(f"Failed to buy contract {contract_address}")
+
+# WebSocket error handler
+def on_error(ws, error):
+    print(f"Error occurred: {error}")
+
+# WebSocket close handler
+def on_close(ws, close_status_code, close_msg):
+    print("### WebSocket closed ###")
+
+# WebSocket open handler
+def on_open(ws):
+    ws.send(f"login, {API_KEY}")
+    print(f"Logged in with API key: {API_KEY}")
+
+# Save and load purchased contract addresses from a file for persistence
+def save_purchased_contracts():
+    with open("purchased_contracts.json", "w") as f:
+        json.dump(list(purchased_contracts), f)
+
+def load_purchased_contracts():
+    try:
+        with open("purchased_contracts.json", "r") as f:
+            return set(json.load(f))
+    except FileNotFoundError:
+        return set()
+
+# Load previously purchased contracts at the start
+purchased_contracts = load_purchased_contracts()
+
+# Run WebSocket connection
+if __name__ == "__main__":
+    websocket.enableTrace(True)
+    ws = websocket.WebSocketApp(WS_URL,
+                                on_open=on_open,
+                                on_message=on_message,
+                                on_error=on_error,
+                                on_close=on_close)
+    ws.run_forever()
+
+    # Save purchased contracts at the end of execution
+    save_purchased_contracts()
